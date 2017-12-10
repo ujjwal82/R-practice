@@ -1,7 +1,7 @@
 # Data Preprocessing Template
 
 # Importing the dataset
-dataset = read.csv('HospitalCosts.csv')
+dataset = read.csv('Linear Regression\\HospitalCosts.csv')
 
 dataset$APRDRG <- factor(dataset$APRDRG)
 table(dataset$APRDRG)
