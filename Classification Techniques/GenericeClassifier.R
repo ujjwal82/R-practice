@@ -23,7 +23,6 @@ my_model <- function(split_size, model_name){
   
   # Splitting the dataset into training and test dataset
   set.seed(123)
-  split_size <- 0.8
   ctg_sample <- sample(2, nrow(dataset), replace = TRUE, prob = c(split_size, 1 - split_size))
   
   training_set <- dataset[ctg_sample == 1, ]
