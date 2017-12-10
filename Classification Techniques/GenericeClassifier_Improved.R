@@ -1,7 +1,8 @@
 # Generate and compare multiple models on same dataset
-dataFilePath <- 'CTG.csv'
+dataFilePath <- 'Classification Techniques\\CTG.csv'
 dependent_var <- 'NSP'
 split_size <- 0.9
+
 
 ## Below package used for SVM
 #install.packages('e1071')
@@ -19,7 +20,7 @@ dataset <- read.csv(dataFilePath)
 summary(dataset)
 
 # Encoding the target feature as factor
-dataset$NSP <- factor(dataset$NSP)
+dataset[dependent_var] <- factor(dataset[,dependent_var])
 
 # Splitting the dataset into training and test dataset
 set.seed(123)
@@ -35,12 +36,17 @@ test_set <- dataset[ctg_sample == 2, ]
 ###
 Comp_pred <- data.frame('predicted' = test_set[dependent_var])
 
+###
+# Create the formula, we will be using it in all of the classification model
+###
+lm_formula <- as.formula(paste(dependent_var, ' ~ .', sep = ''))
+
 ###--------------------###
 # Support Vector Machine #
 ###--------------------###
 # Fitting SVM model on training set
 library(e1071)
-classifier <- svm(NSP ~ ., data = training_set)
+classifier <- svm(formula = lm_formula, data = training_set)
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
@@ -50,7 +56,7 @@ Comp_pred$SVM <- y_pred
 # Naive Bayes            #
 ###--------------------###
 # Fitting Naive Bayes model on training set
-classifier <- naiveBayes(NSP ~ ., data = training_set)
+classifier <- naiveBayes(formula = lm_formula, data = training_set)
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
@@ -61,7 +67,7 @@ Comp_pred$NaiveBayes <- y_pred
 ###--------------------###
 # Fitting Decision Tree model on training set
 library(party)
-classifier <- ctree(formula = NSP ~ ., data = training_set, controls = ctree_control(mincriterion = 0.9, minsplit = 458))
+classifier <- ctree(formula = lm_formula, data = training_set, controls = ctree_control(mincriterion = 0.9, minsplit = 458))
 # classifier <- ctree(formula = NSP ~ LB + FM + AC, data = training_set)
 # plot(classifier)
 
@@ -74,7 +80,7 @@ Comp_pred$DecisionTree <- y_pred
 ###--------------------###
 # Fitting Random FOrest model on training set
 library(randomForest)
-classifier <- randomForest(formula = NSP ~ ., data = training_set)
+classifier <- randomForest(formula = lm_formula, data = training_set)
 # plot(classifier)
 
 # Predicting the test set results
