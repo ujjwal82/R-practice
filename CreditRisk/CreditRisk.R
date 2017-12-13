@@ -55,7 +55,7 @@ lm_formula <- as.formula(paste(dependent_var, ' ~ .', sep = ''))
 ###--------------------###
 # Logistic regression    #
 ###--------------------###
-# Fitting SVM model on training set
+# Fitting Logistic Regression model on training set
 classifier <- glm(formula = lm_formula, family = binomial, data = training_set)
 
 # Predicting the test set results
