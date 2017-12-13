@@ -133,3 +133,28 @@ getMode <- function(v){
 ###
 Comp_pred$Verdict <- apply(Comp_pred[-1], 1, getMode)
 
+###
+# Confussion matrixes for different calssifications
+###
+cm.L_R <- table(Comp_pred$L_R,test_set$Loan_Status)
+cm.DecisionTree <- table(Comp_pred$DecisionTree, test_set$Loan_Status)
+cm.KNN <- table(Comp_pred$KNN,test_set$Loan_Status)
+cm.RandomForest <- table(Comp_pred$RandomForest,test_set$Loan_Status)
+cm.Verdict <- table(Comp_pred$Verdict,test_set$Loan_Status)
+
+
+###
+# Calculate accuracy
+###
+acc.L_R<- sum(diag(cm.L_R))/sum(cm.L_R)*100
+acc.DecisionTree <- sum(diag(cm.DecisionTree))/sum(cm.DecisionTree)*100
+acc.KNN<- sum(diag(cm.KNN))/sum(cm.KNN)*100
+acc.RandomForest<- sum(diag(cm.RandomForest))/sum(cm.RandomForest)*100
+acc.Verdict<- sum(diag(cm.Verdict))/sum(cm.Verdict)*100
+
+print(paste('Logistic Regressor : ', acc.L_R))
+print(paste('Decision Tree : ', acc.DecisionTree))
+print(paste('Random Forest : ', acc.RandomForest))
+print(paste('KNN : ', acc.KNN))
+print(paste('Final verdict : ', acc.Verdict))
+
