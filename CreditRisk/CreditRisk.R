@@ -2,6 +2,7 @@
 # Logistic Regression
 
 library(dplyr)
+source('CreditRisk\\RFunctions.R')
 
 # Importing the dataset
 dataset <- read.csv("CreditRisk\\CreditRisk.csv")
@@ -46,22 +47,22 @@ test_set = subset(dataset, split == FALSE)
 ###
 Comp_pred <- data.frame('predicted' = test_set[dependent_var])
 
-###
-# Create the formula, we will be using it in all of the classification model
-###
-lm_formula <- as.formula(paste(dependent_var, ' ~ .', sep = ''))
-
-
 ###--------------------###
 # Logistic regression    #
 ###--------------------###
 # Fitting Logistic Regression model on training set
-classifier <- glm(formula = lm_formula, family = binomial, data = training_set)
+func_ret <- getBestSuitableRegressor(dataset = training_set, dependent_var = dependent_var)
+classifier <- func_ret[[1]]
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
 Comp_pred$L_R <- ifelse(y_pred > 0.5, 1, 0)
 
+###
+# We have the fomula for best suitable Logistic regression modle.
+# we will use the same formula for other classification models
+###
+lm_formula <- func_ret[[2]]
 
 ###--------------------###
 # Support Vector Machine #
@@ -114,16 +115,6 @@ Comp_pred$KNN <- y_pred
 # Name the rows correctly (as squence of numbers)
 rownames(Comp_pred) <- c(1: length(y_pred)) 
 
-# R does not have a standard in-built function to calculate mode. So we 
-# create a user function to calculate mode of a data set in R. This 
-# function takes the vector as input and gives the mode value as output.
-
-# Create a function to calculate and return the mode of values
-getMode <- function(v){
-  uniqv <- unique(v)
-  uniqv[which.max(tabulate(match(v, uniqv)))]
-}
-
 ###
 # Finally we want to take the vote of outcomes coming from all these 
 # classsification techniques and declare the our verdict.
@@ -133,24 +124,15 @@ getMode <- function(v){
 ###
 Comp_pred$Verdict <- apply(Comp_pred[-1], 1, getMode)
 
-###
-# Confussion matrixes for different calssifications
-###
-cm.L_R <- table(Comp_pred$L_R,test_set$Loan_Status)
-cm.DecisionTree <- table(Comp_pred$DecisionTree, test_set$Loan_Status)
-cm.KNN <- table(Comp_pred$KNN,test_set$Loan_Status)
-cm.RandomForest <- table(Comp_pred$RandomForest,test_set$Loan_Status)
-cm.Verdict <- table(Comp_pred$Verdict,test_set$Loan_Status)
-
 
 ###
 # Calculate accuracy
 ###
-acc.L_R<- sum(diag(cm.L_R))/sum(cm.L_R)*100
-acc.DecisionTree <- sum(diag(cm.DecisionTree))/sum(cm.DecisionTree)*100
-acc.KNN<- sum(diag(cm.KNN))/sum(cm.KNN)*100
-acc.RandomForest<- sum(diag(cm.RandomForest))/sum(cm.RandomForest)*100
-acc.Verdict<- sum(diag(cm.Verdict))/sum(cm.Verdict)*100
+acc.L_R <- calcAccuracy(Comp_pred$L_R,test_set$Loan_Status)
+acc.DecisionTree <- calcAccuracy(Comp_pred$DecisionTree, test_set$Loan_Status)
+acc.KNN <- calcAccuracy(Comp_pred$KNN,test_set$Loan_Status)
+acc.RandomForest <- calcAccuracy(Comp_pred$RandomForest,test_set$Loan_Status)
+acc.Verdict <- calcAccuracy(Comp_pred$Verdict,test_set$Loan_Status)
 
 print(paste('Logistic Regressor : ', acc.L_R))
 print(paste('Decision Tree : ', acc.DecisionTree))
