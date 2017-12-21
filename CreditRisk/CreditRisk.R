@@ -52,7 +52,7 @@ Comp_pred <- data.frame('predicted' = test_set[dependent_var])
 ###--------------------###
 # Fitting Logistic Regression model on training set
 func_ret <- getBestSuitableRegressor(dataset = training_set, dependent_var = dependent_var)
-classifier <- func_ret[[1]]
+classifier <- func_ret$classifier
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
@@ -62,7 +62,7 @@ Comp_pred$L_R <- ifelse(y_pred > 0.5, 1, 0)
 # We have the fomula for best suitable Logistic regression modle.
 # we will use the same formula for other classification models
 ###
-lm_formula <- func_ret[[2]]
+lm_formula <- func_ret$formula
 
 ###--------------------###
 # Support Vector Machine #

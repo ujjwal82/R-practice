@@ -52,7 +52,7 @@ getBestSuitableRegressor <- function(dataset, dependent_var){
     
   }
   
-  return_lst = list(classifier, lm_formula)
+  return_lst = list(classifier = classifier, formula = lm_formula)
   return(return_lst)
 }
 
