@@ -10,7 +10,10 @@ library("twitteR")
 library("wordcloud")
 library("tm")
 
-#necessary file for Windows
+###
+# The reference site says it's necessary, but 
+# i didn't find it used any where.
+###
 #download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile="cacert.pem")
 
 #to get your consumerKey and consumerSecret see the twitteR documentation for instructions
@@ -23,9 +26,12 @@ setup_twitter_oauth(consumer_key,
                     access_token,
                     access_secret)
 
-#the cainfo parameter is necessary only on Windows
+###
+# Get the twits with hash tag 'Rstats' max twits 1500
+###
 r_stats <- searchTwitter("#Rstats", n=1500)
-#should get 1500
+
+# Check the number of twits we received.
 length(r_stats)
 #[1] 1500
 
@@ -46,5 +52,21 @@ r_stats_text_corpus <- tm_map(r_stats_text_corpus, function(x)removeWords(x,stop
 
 wordcloud(r_stats_text_corpus, min.freq = 15, random.order = FALSE, random.color =TRUE)
 
+## ------------------------------
 
+library(RColorBrewer)
+###
+# Get the twits with hash tag 'bioinformatics' max twits 1500
+###
+bioinformatics <- searchTwitter("#bioinformatics", n=1500)
+bioinformatics_text <- sapply(bioinformatics, function(x) x$getText())
+bioinformatics_text_corpus <- Corpus(VectorSource(bioinformatics_text))
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus,
+                                     content_transformer(function(x) iconv(x, to='UTF-8', 
+                                                                           sub='byte')))
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus, content_transformer(tolower))
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus, removePunctuation)
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus, function(x)removeWords(x,stopwords()))
 
+pal2 <- brewer.pal(8,"Dark2")
+wordcloud(bioinformatics_text_corpus,min.freq=2,max.words=100, random.order=T, colors=pal2)
