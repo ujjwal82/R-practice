@@ -37,6 +37,7 @@ SentimentAnalysis <- function(textFileName, title) {
   # title <- 'Super Tuesday (5 Feb 2008) Sentiment'
   
   text <- paste(readLines(textFileName), collapse = " ")
+
   ###
   # Remove the stop words from the speach text
   ###
