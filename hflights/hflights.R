@@ -3,6 +3,8 @@
 
 # install.packages("hflights")
 # install.packages("dplyr")
+# install.packages('party')
+# install.packages('randomForest')
 library(dplyr)
 library(hflights)
 
@@ -19,6 +21,7 @@ dependent_var <- 'Delayed'
 
 # Find all flights which delayed by more than 15 and mark them as DELAYED 
 dataset$Delayed <- ifelse(is.na(dataset$DepDelay), 0, ifelse(dataset$DepDelay > 15, 1, 0))
+#head(dataset)
 
 ###
 # Handle the NA values, replace then to 0 where ever needed
@@ -35,6 +38,8 @@ dataset$Delayed <- ifelse(is.na(dataset$DepDelay), 0, ifelse(dataset$DepDelay > 
 ###
 dataset<- dataset %>%
   filter(CancellationCode == '')
+head(dataset)
+nrow(dataset)
 
 ###
 # Split the dataset into training and test data
@@ -62,6 +67,7 @@ lm_formula <- as.formula(paste('Delayed', ' ~ ActualElapsedTime + ArrDelay + Arr
 ###--------------------###
 # Fitting Logistic Regression model on training set
 classifier <- glm(formula = lm_formula, family = binomial,data = training_set)
+summary(classifier)
 
 ###
 # Predict the results using test data
