@@ -8,7 +8,6 @@
 # install.packages("dplyr")
 # install.packages("rpart")
 library(dplyr)
-library(hflights)
 
 #source('RFunctions.R')
 
@@ -18,17 +17,18 @@ library(hflights)
 # Format the flight date, set new column Deloayed 1 
 # if DepDelayed more than 15 0 otherwise 
 ###
-dataset <- hflights %>%
+dataset_raw <- read.csv('hflights/data/Flight1987.csv')
+
+dataset <- dataset_raw %>%
+  filter(is.na(DayOfWeek) != TRUE) %>%
   mutate(Date = paste(Year, Month, DayofMonth, sep = "-"),
          ActualElapsedTime= ifelse(is.na(ActualElapsedTime), 0, ActualElapsedTime),
-         AirTime = ifelse(is.na(AirTime), 0, AirTime),
          ArrDelay = ifelse(is.na(ArrDelay), 0, ArrDelay),
          DepDelay = ifelse(is.na(DepDelay), 0, DepDelay),
-         Delayed = ifelse(is.na(DepDelay), 0, ifelse(DepDelay > 15, 1, 0))) %>%
+         Delayed = ifelse(is.na(DepDelay), 0, ifelse(dataset$DepDelay > 15, 1, 0))) %>%
   select(Date, DayOfWeek, DepTime, ArrTime, 
-         ActualElapsedTime, AirTime, ArrDelay, DepDelay, 
-         Origin, Dest, Distance, TaxiIn, TaxiOut, 
-         Cancelled, CancellationCode, Diverted, Delayed)
+         ActualElapsedTime, ArrDelay, DepDelay, 
+         Origin, Dest, Distance, Delayed)
 
 head(dataset)
 
@@ -38,7 +38,7 @@ dependent_var <- 'Delayed'
 # Load the airport list
 ###
 raw <- read.delim('https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv', 
-                         sep = '^')
+                  sep = '^')
 
 airport_ds <- select(raw, city_code, city_name, country_code, tz_code, por_code, por_name)
 head(airport_ds)
@@ -49,14 +49,21 @@ head(airport_ds)
 dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
 dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
 
-head(dataset)
+dataset$Date <- factor(dataset$Date)
+dataset$Delayed <- factor(dataset$Delayed)
+dataset$DayOfWeek <- factor(dataset$DayOfWeek)
+
+dataset <- dataset %>%
+  filter(is.na(DepTime) == FALSE &
+           is.na(ArrTime) == FALSE)
+#write.csv(dataset, file = "hflights/data/dataset.csv")
+summary(dataset)
 
 ###
 # Summarized delayed flight data flying from different origins and destination
 ###
 
 dataset %>%
-  filter(Cancelled == 0) %>%
   group_by(Origin) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
@@ -64,7 +71,6 @@ dataset %>%
             total = n())
 
 dataset %>%
-  filter(Cancelled == 0) %>%
   group_by(Dest) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
@@ -72,42 +78,27 @@ dataset %>%
             total = n())
 
 ###
-# Cancelled Flights
-# Flights cancelled by Carrier
+# Summarized delayed flight data flying on different weekdays/weekends
 ###
 dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'A') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
+  group_by(DayOfWeek) %>%
+  summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
+            min_deplay = min(DepDelay),
+            max_delay = max(DepDelay),
+            total = n())
+
+
 
 ###
-# Cancelled Flights
-# Flights cancelled by weather
+# Summarized delayed flight data flying from Atlanta
 ###
 dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'B') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
-
-###
-# Cancelled Flights
-# Flights cancelled by national air system
-###
-dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'C') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
-
-###
-# Cancelled Flights
-# Flights cancelled by security
-###
-dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'D') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
-
-
+  filter(Origin == 'Atlanta' & Delayed == 1) %>%
+  group_by(Origin, Dest) %>%
+  summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
+            min_deplay = min(DepDelay),
+            max_delay = max(DepDelay),
+            total = n())
 
 
 ##------- Predictions  ---------##
@@ -116,7 +107,7 @@ dataset %>%
 # Split the dataset into training and test data
 ###
 set.seed(123)
-flt_sample <- sample(2, nrow(dataset), replace = TRUE, prob = c(0.9, 0.1))
+flt_sample <- sample(2, nrow(dataset), replace = TRUE, prob = c(0.95, 0.05))
 training_set <- dataset[flt_sample == 1, ]
 test_set <- dataset[flt_sample == 2, ]
 
@@ -130,21 +121,22 @@ Comp_pred <- data.frame('predicted' = test_set[dependent_var])
 ###
 # Create the formula, we will be using it in all of the classification model
 ###
-lm_formula <- as.formula(paste('Delayed', ' ~ ActualElapsedTime + ArrDelay + ArrTime + 
-                   AirTime + ArrDelay + Distance + TaxiIn', sep = ''))
+lm_formula <- as.formula(paste('DepDelay', ' ~ DayOfWeek', sep = ''))
 
 
 ###--------------------###
-# Logistic regression    #
+# Linear regression      #
 ###--------------------###
-# Fitting Logistic Regression model on training set
-classifier <- glm(formula = lm_formula, family = binomial,data = training_set)
+# Fitting Linear Regression model on training set
+classifier <- lm(formula = lm_formula, data = training_set)
+summary(classifier)
 
 ###
 # Predict the results using test data
 ###
-y_pred <- predict(classifier, test_set, type = "response")
+y_pred <- predict(classifier, test_set)
 Comp_pred$L_R <- ifelse(y_pred > 0.5, 1, 0)
+
 
 ###--------------------###
 # Support Vector Machine #
@@ -185,11 +177,10 @@ Comp_pred$RandomForest <- ifelse(y_pred > 0.5, 1, 0)
 # K-Nearest Neighbor(KNN) #
 ###---------------------###
 # remove the dependent variable
+training_set1 <- training_set[, -22]
+test_set1 <- test_set[, -22]
 
-training_set1 <- select(training_set, -Delayed)
-test_set1 <- select(test_set, -Delayed)
-
-ctg_train_lbl <- training_set[, 'Delayed']
+ctg_train_lbl <- training_set[, 22]
 
 library(class)
 y_pred <- knn(train = training_set1,  test = test_set1, cl = ctg_train_lbl, k = 1000)
