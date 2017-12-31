@@ -7,18 +7,19 @@
 # install.packages("hflights")
 # install.packages("dplyr")
 # install.packages("rpart")
-library(dplyr)
+suppressMessages(library(dplyr))
 
 #source('RFunctions.R')
 
-# Importing the dataset and select useful columns only
+###
+# Importing the dataset, read the compressed file directly into dataset
+###
+dataset_raw <- read.csv(gzfile('hflights/data/Flight1987.csv.xz' ))
 
 ###
 # Format the flight date, set new column Deloayed 1 
 # if DepDelayed more than 15 0 otherwise 
 ###
-dataset_raw <- read.csv('hflights/data/Flight1987.csv')
-
 dataset <- dataset_raw %>%
   filter(is.na(DayOfWeek) != TRUE) %>%
   mutate(Date = paste(Year, Month, DayofMonth, sep = "-"),
@@ -121,7 +122,8 @@ Comp_pred <- data.frame('predicted' = test_set[dependent_var])
 ###
 # Create the formula, we will be using it in all of the classification model
 ###
-lm_formula <- as.formula(paste('DepDelay', ' ~ DayOfWeek', sep = ''))
+lm_formula <- as.formula(paste('DepDelay', ' ~ DayOfWeek + DepTime + ArrTime +
+                               ActualElapsedTime + ArrDelay + DepDelay + Distance', sep = ''))
 
 
 ###--------------------###
@@ -153,7 +155,7 @@ Comp_pred$L_R <- ifelse(y_pred > 0.5, 1, 0)
 # Decision Tree          #
 ###--------------------###
 # Fitting Decision Tree model on training set
-library(party)
+suppressWarnings(library(party))
 classifier <- ctree(formula = lm_formula, data = training_set, controls = ctree_control(mincriterion = 0.9, minsplit = 1000))
 # plot(classifier)
 
@@ -165,9 +167,10 @@ Comp_pred$DecisionTree <- ifelse(y_pred > 0.5, 1, 0)
 # Random Forest          #
 ###--------------------###
 # Fitting Random FOrest model on training set
-library(randomForest)
+suppressWarnings(library(randomForest)) 
 classifier <- randomForest(formula = lm_formula, data = training_set)
 # plot(classifier)
+class(classifier)
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
@@ -182,7 +185,7 @@ test_set1 <- test_set[, -22]
 
 ctg_train_lbl <- training_set[, 22]
 
-library(class)
+suppressWarnings(library(class))
 y_pred <- knn(train = training_set1,  test = test_set1, cl = ctg_train_lbl, k = 1000)
 Comp_pred$KNN <- ifelse(y_pred > 0.5, 1, 0)
 
