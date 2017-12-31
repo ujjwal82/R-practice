@@ -29,7 +29,7 @@ setup_twitter_oauth(consumer_key,
 ###
 # Get the twits with hash tag 'Rstats' max twits 1500
 ###
-r_stats <- searchTwitter("#machinelearning", n=1500)
+r_stats <- searchTwitter("#Rstats", n=1500)
 
 # Check the number of twits we received.
 length(r_stats)
@@ -50,27 +50,23 @@ r_stats_text_corpus <- tm_map(r_stats_text_corpus, content_transformer(tolower))
 r_stats_text_corpus <- tm_map(r_stats_text_corpus, removePunctuation)
 r_stats_text_corpus <- tm_map(r_stats_text_corpus, function(x)removeWords(x,stopwords()))
 
-pal2 <- brewer.pal(12,"Dark2")
-wordcloud(r_stats_text_corpus,min.freq=2,max.words=100, random.order=T, colors=pal2)
+wordcloud(r_stats_text_corpus, min.freq = 15, random.order = FALSE, random.color =TRUE)
 
-## -------------------------------
+## ------------------------------
 
-# Who are following you??
+library(RColorBrewer)
+###
+# Get the twits with hash tag 'bioinformatics' max twits 1500
+###
+bioinformatics <- searchTwitter("#bioinformatics", n=1500)
+bioinformatics_text <- sapply(bioinformatics, function(x) x$getText())
+bioinformatics_text_corpus <- Corpus(VectorSource(bioinformatics_text))
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus,
+                                     content_transformer(function(x) iconv(x, to='UTF-8', 
+                                                                           sub='byte')))
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus, content_transformer(tolower))
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus, removePunctuation)
+bioinformatics_text_corpus <- tm_map(bioinformatics_text_corpus, function(x)removeWords(x,stopwords()))
 
-me <- getUser("ujjwal82")
-me$getId()
-getUser(67892304)
-
-getUser(67843184)
-
-# me$getFollowerIDs()
-me$getFollowers()
-
-
-# What is trending now ??
-
-trend <- availableTrendLocations()
-head(trend, 10)
-
-trend <- getTrends(1)
-head(trend, 10)
+pal2 <- brewer.pal(8,"Dark2")
+wordcloud(bioinformatics_text_corpus,min.freq=2,max.words=100, random.order=T, colors=pal2)

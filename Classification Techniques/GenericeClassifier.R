@@ -74,8 +74,8 @@ my_model <- function(split_size, model_name){
   model$FNR <- (cm[3] / (cm[3] + cm[4]))*100 
   model$TNR <- (cm[4] / (cm[3] + cm[4]))*100 
   
-  model$Recall <- cm[1]/ (cm[1]+cm[3])
-  model$Precision <- cm[1]/ (cm[1]+cm[2])
+  model$Recall <- cm[1]/ (cm[1]+cm[2])
+  model$Precision <- cm[1]/ (cm[1]+cm[3])
   model$F1Score <- 2*((model$Recall* model$Precision)/(model$Recall + model$Precision))
   model$G_measure <- sqrt(model$Recall*model$Precision)
   
