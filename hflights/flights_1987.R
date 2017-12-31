@@ -7,6 +7,7 @@
 # install.packages("hflights")
 # install.packages("dplyr")
 # install.packages("rpart")
+# install.packages('plotly')
 suppressMessages(library(dplyr))
 
 #source('RFunctions.R')
@@ -26,21 +27,29 @@ dataset <- dataset_raw %>%
          ActualElapsedTime= ifelse(is.na(ActualElapsedTime), 0, ActualElapsedTime),
          ArrDelay = ifelse(is.na(ArrDelay), 0, ArrDelay),
          DepDelay = ifelse(is.na(DepDelay), 0, DepDelay),
-         Delayed = ifelse(is.na(DepDelay), 0, ifelse(dataset$DepDelay > 15, 1, 0))) %>%
-  select(Date, DayOfWeek, DepTime, ArrTime, 
+         Delayed = ifelse(is.na(DepDelay), 0, ifelse(DepDelay > 15, 1, 0))) %>%
+  select(Date, Year, Month, DayofMonth, DayOfWeek, DepTime, ArrTime, 
          ActualElapsedTime, ArrDelay, DepDelay, 
          Origin, Dest, Distance, Delayed)
 
-head(dataset)
+summary(dataset)
 
 dependent_var <- 'Delayed'
 
 ###
+# Check if the data file is present if not download it.
+###
+if (!file.exists("hflights/data/airports.dat")) {
+  download.file(
+    'https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv',
+    'hflights/data/airports.dat'
+  )
+}
+
+###
 # Load the airport list
 ###
-raw <- read.delim('https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv', 
-                  sep = '^')
-
+raw <- read.delim('hflights/data/airports.dat', sep = '^')
 airport_ds <- select(raw, city_code, city_name, country_code, tz_code, por_code, por_name)
 head(airport_ds)
 
@@ -50,7 +59,13 @@ head(airport_ds)
 dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
 dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
 
+dataset$Origin <- factor(dataset$Origin)
+dataset$Dest <- factor(dataset$Dest)
+
 dataset$Date <- factor(dataset$Date)
+dataset$Year <- factor(dataset$Year)
+dataset$Month <- factor(dataset$Month)
+dataset$DayofMonth <- factor(dataset$DayofMonth)
 dataset$Delayed <- factor(dataset$Delayed)
 dataset$DayOfWeek <- factor(dataset$DayOfWeek)
 
@@ -60,18 +75,56 @@ dataset <- dataset %>%
 #write.csv(dataset, file = "hflights/data/dataset.csv")
 summary(dataset)
 
+unique(dataset$Origin)
+unique(dataset$Dest)
+
+df <- 
+  dataset %>%
+  filter(Delayed == 1) %>%
+  group_by(Year, Month) %>%
+  summarise( avg_delay = round(x = mean(DepDelay, na.rm = TRUE), digits = 0),
+             max_delay = max(DepDelay)) %>%
+  arrange(Year, Month) %>%
+  mutate(Year_Month = paste(Month, Year, sep = '/')) %>%
+    ungroup() %>%
+  select(Year_Month, avg_delay, max_delay)
+
+###
+# Visualizing data
+###
+suppressWarnings(library(plotly))
+
+plot_ly(data = df, x = ~Year_Month, y = ~avg_delay, 
+        text = avg_delay, 
+        type = 'bar', 
+        name = 'Avg Delay') %>%
+  add_trace(y = ~max_delay, name = 'Max Delay') %>%
+  layout(yaxis = list(title = 'Delay'), barmode = 'group')
+
+df %>%
+  plot_ly()%>%
+  add_trace(x = ~Year_Month, y = ~avg_delay, type = 'bar',
+            text = df$avg_delay, textposition = 'auto') %>%
+  add_trace(x = ~Year_Month, y = ~max_delay, type = 'bar',
+            text = df$max_delay, textposition = 'auto') %>%
+  layout(title = "Monthly delayed flights",
+         barmode = 'group',
+         xaxis = list(title = "Month"),
+         yaxis = list(title = "Delay in minutes"))
+
+
 ###
 # Summarized delayed flight data flying from different origins and destination
 ###
 
-dataset %>%
+df_origin_flights <- dataset %>%
   group_by(Origin) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
             max_delay = max(DepDelay),
             total = n())
 
-dataset %>%
+df_dest_flights <- dataset %>%
   group_by(Dest) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
@@ -81,7 +134,7 @@ dataset %>%
 ###
 # Summarized delayed flight data flying on different weekdays/weekends
 ###
-dataset %>%
+df_weekdays_flights <- dataset %>%
   group_by(DayOfWeek) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
@@ -93,14 +146,14 @@ dataset %>%
 ###
 # Summarized delayed flight data flying from Atlanta
 ###
-dataset %>%
+df_fromAtlanta_flights <- dataset %>%
   filter(Origin == 'Atlanta' & Delayed == 1) %>%
   group_by(Origin, Dest) %>%
-  summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
-            min_deplay = min(DepDelay),
-            max_delay = max(DepDelay),
-            total = n())
+  summarise( Flight = paste(Origin, Dest, sep = '-'),
+    avg_delay = round(x = mean(DepDelay), digits = 0))
 
+plot(df_fromAtlanta_flights)
+save(dataset, file=".RData")
 
 ##------- Predictions  ---------##
 
