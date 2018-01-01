@@ -14,6 +14,18 @@ data("hflights")
 dataset <- as.data.frame(hflights) 
 dependent_var <- 'Delayed'
 
+
+###
+# Handle the NA values, replace then to 0 where ever needed
+###
+dataset <- mutate(dataset, replace = TRUE,  
+                  ActualElapsedTime= ifelse(is.na(ActualElapsedTime), 0, ActualElapsedTime),
+                  AirTime = ifelse(is.na(AirTime), 0, AirTime),
+                  ArrDelay = ifelse(is.na(ArrDelay), 0, ArrDelay),
+                  DepDelay = ifelse(is.na(DepDelay), 0, DepDelay)
+)
+
+
 ###
 # Add new column which will indicate that the flight was deloyed (Y/N)
 # we determine this by DepDelay being greater that 15
@@ -21,16 +33,28 @@ dependent_var <- 'Delayed'
 
 # Find all flights which delayed by more than 15 and mark them as DELAYED 
 dataset$Delayed <- ifelse(is.na(dataset$DepDelay), 0, ifelse(dataset$DepDelay > 15, 1, 0))
-#head(dataset)
 
 ###
-# Handle the NA values, replace then to 0 where ever needed
+# Add airport city name (Origin and Destination both)
 ###
-# dataset <- mutate(dataset, replace = TRUE,  ActualElapsedTime= ifelse(is.na(ActualElapsedTime), 0, ActualElapsedTime),
-#                   AirTime = ifelse(is.na(AirTime), 0, AirTime),
-#                   ArrDelay = ifelse(is.na(ArrDelay), 0, ArrDelay),
-#                   DepDelay = ifelse(is.na(DepDelay), 0, DepDelay)
-#                   )
+airport_ds <- read.csv('airportList.csv', header = FALSE)
+colnames(airport_ds) <- c('airport_name', 'code')
+head(airport_ds)
+airport_ds[,'airport_name']
+
+
+###
+# Derive the Full date
+###
+dataset$Date <- paste(dataset$Year, dataset$Month, dataset$DayofMonth, sep = '-')
+
+
+###
+# All filghts flying on 1-Jan and delayed 
+###
+dataset %>%
+  filter(Month == 1 , DayofMonth == 1) %>%
+  filter(Delayed == 1)
 
 
 ###
