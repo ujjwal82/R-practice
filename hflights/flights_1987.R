@@ -7,39 +7,49 @@
 # install.packages("hflights")
 # install.packages("dplyr")
 # install.packages("rpart")
-library(dplyr)
+# install.packages('plotly')
+suppressMessages(library(dplyr))
 
 #source('RFunctions.R')
 
-# Importing the dataset and select useful columns only
+###
+# Importing the dataset, read the compressed file directly into dataset
+###
+dataset_raw <- read.csv(gzfile('hflights/data/Flight1987.csv.xz' ))
 
 ###
 # Format the flight date, set new column Deloayed 1 
 # if DepDelayed more than 15 0 otherwise 
 ###
-dataset_raw <- read.csv('hflights/data/Flight1987.csv')
-
 dataset <- dataset_raw %>%
   filter(is.na(DayOfWeek) != TRUE) %>%
   mutate(Date = paste(Year, Month, DayofMonth, sep = "-"),
          ActualElapsedTime= ifelse(is.na(ActualElapsedTime), 0, ActualElapsedTime),
          ArrDelay = ifelse(is.na(ArrDelay), 0, ArrDelay),
          DepDelay = ifelse(is.na(DepDelay), 0, DepDelay),
-         Delayed = ifelse(is.na(DepDelay), 0, ifelse(dataset$DepDelay > 15, 1, 0))) %>%
-  select(Date, DayOfWeek, DepTime, ArrTime, 
+         Delayed = ifelse(is.na(DepDelay), 0, ifelse(DepDelay > 15, 1, 0))) %>%
+  select(Date, Year, Month, DayofMonth, DayOfWeek, DepTime, ArrTime, 
          ActualElapsedTime, ArrDelay, DepDelay, 
          Origin, Dest, Distance, Delayed)
 
-head(dataset)
+summary(dataset)
 
 dependent_var <- 'Delayed'
 
 ###
+# Check if the data file is present if not download it.
+###
+if (!file.exists("hflights/data/airports.dat")) {
+  download.file(
+    'https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv',
+    'hflights/data/airports.dat'
+  )
+}
+
+###
 # Load the airport list
 ###
-raw <- read.delim('https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv', 
-                  sep = '^')
-
+raw <- read.delim('hflights/data/airports.dat', sep = '^')
 airport_ds <- select(raw, city_code, city_name, country_code, tz_code, por_code, por_name)
 head(airport_ds)
 
@@ -49,7 +59,13 @@ head(airport_ds)
 dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
 dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
 
+dataset$Origin <- factor(dataset$Origin)
+dataset$Dest <- factor(dataset$Dest)
+
 dataset$Date <- factor(dataset$Date)
+dataset$Year <- factor(dataset$Year)
+dataset$Month <- factor(dataset$Month)
+dataset$DayofMonth <- factor(dataset$DayofMonth)
 dataset$Delayed <- factor(dataset$Delayed)
 dataset$DayOfWeek <- factor(dataset$DayOfWeek)
 
@@ -59,18 +75,56 @@ dataset <- dataset %>%
 #write.csv(dataset, file = "hflights/data/dataset.csv")
 summary(dataset)
 
+unique(dataset$Origin)
+unique(dataset$Dest)
+
+df <- 
+  dataset %>%
+  filter(Delayed == 1) %>%
+  group_by(Year, Month) %>%
+  summarise( avg_delay = round(x = mean(DepDelay, na.rm = TRUE), digits = 0),
+             max_delay = max(DepDelay)) %>%
+  arrange(Year, Month) %>%
+  mutate(Year_Month = paste(Month, Year, sep = '/')) %>%
+    ungroup() %>%
+  select(Year_Month, avg_delay, max_delay)
+
+###
+# Visualizing data
+###
+suppressWarnings(library(plotly))
+
+plot_ly(data = df, x = ~Year_Month, y = ~avg_delay, 
+        text = avg_delay, 
+        type = 'bar', 
+        name = 'Avg Delay') %>%
+  add_trace(y = ~max_delay, name = 'Max Delay') %>%
+  layout(yaxis = list(title = 'Delay'), barmode = 'group')
+
+df %>%
+  plot_ly()%>%
+  add_trace(x = ~Year_Month, y = ~avg_delay, type = 'bar',
+            text = df$avg_delay, textposition = 'auto') %>%
+  add_trace(x = ~Year_Month, y = ~max_delay, type = 'bar',
+            text = df$max_delay, textposition = 'auto') %>%
+  layout(title = "Monthly delayed flights",
+         barmode = 'group',
+         xaxis = list(title = "Month"),
+         yaxis = list(title = "Delay in minutes"))
+
+
 ###
 # Summarized delayed flight data flying from different origins and destination
 ###
 
-dataset %>%
+df_origin_flights <- dataset %>%
   group_by(Origin) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
             max_delay = max(DepDelay),
             total = n())
 
-dataset %>%
+df_dest_flights <- dataset %>%
   group_by(Dest) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
@@ -80,7 +134,7 @@ dataset %>%
 ###
 # Summarized delayed flight data flying on different weekdays/weekends
 ###
-dataset %>%
+df_weekdays_flights <- dataset %>%
   group_by(DayOfWeek) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
@@ -92,14 +146,14 @@ dataset %>%
 ###
 # Summarized delayed flight data flying from Atlanta
 ###
-dataset %>%
+df_fromAtlanta_flights <- dataset %>%
   filter(Origin == 'Atlanta' & Delayed == 1) %>%
   group_by(Origin, Dest) %>%
-  summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
-            min_deplay = min(DepDelay),
-            max_delay = max(DepDelay),
-            total = n())
+  summarise( Flight = paste(Origin, Dest, sep = '-'),
+    avg_delay = round(x = mean(DepDelay), digits = 0))
 
+plot(df_fromAtlanta_flights)
+save(dataset, file=".RData")
 
 ##------- Predictions  ---------##
 
@@ -121,7 +175,8 @@ Comp_pred <- data.frame('predicted' = test_set[dependent_var])
 ###
 # Create the formula, we will be using it in all of the classification model
 ###
-lm_formula <- as.formula(paste('DepDelay', ' ~ DayOfWeek', sep = ''))
+lm_formula <- as.formula(paste('DepDelay', ' ~ DayOfWeek + DepTime + ArrTime +
+                               ActualElapsedTime + ArrDelay + DepDelay + Distance', sep = ''))
 
 
 ###--------------------###
@@ -153,7 +208,7 @@ Comp_pred$L_R <- ifelse(y_pred > 0.5, 1, 0)
 # Decision Tree          #
 ###--------------------###
 # Fitting Decision Tree model on training set
-library(party)
+suppressWarnings(library(party))
 classifier <- ctree(formula = lm_formula, data = training_set, controls = ctree_control(mincriterion = 0.9, minsplit = 1000))
 # plot(classifier)
 
@@ -165,9 +220,10 @@ Comp_pred$DecisionTree <- ifelse(y_pred > 0.5, 1, 0)
 # Random Forest          #
 ###--------------------###
 # Fitting Random FOrest model on training set
-library(randomForest)
+suppressWarnings(library(randomForest)) 
 classifier <- randomForest(formula = lm_formula, data = training_set)
 # plot(classifier)
+class(classifier)
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
@@ -182,7 +238,7 @@ test_set1 <- test_set[, -22]
 
 ctg_train_lbl <- training_set[, 22]
 
-library(class)
+suppressWarnings(library(class))
 y_pred <- knn(train = training_set1,  test = test_set1, cl = ctg_train_lbl, k = 1000)
 Comp_pred$KNN <- ifelse(y_pred > 0.5, 1, 0)
 
