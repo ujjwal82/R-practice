@@ -7,10 +7,16 @@
 # install.packages("hflights")
 # install.packages("dplyr")
 # install.packages("rpart")
-library(dplyr)
-library(hflights)
+# install.packages('plotly')
+# install.packages('httpuv')
+# install.packages('randomForest')
+suppressWarnings(library(dplyr))
+suppressWarnings(library(hflights))
+suppressWarnings(library(plotly))
+suppressWarnings(library(party))
+suppressWarnings(library(randomForest))
 
-#source('RFunctions.R')
+source('hflights/common.R')
 
 # Importing the dataset and select useful columns only
 
@@ -25,7 +31,7 @@ dataset <- hflights %>%
          ArrDelay = ifelse(is.na(ArrDelay), 0, ArrDelay),
          DepDelay = ifelse(is.na(DepDelay), 0, DepDelay),
          Delayed = ifelse(is.na(DepDelay), 0, ifelse(DepDelay > 15, 1, 0))) %>%
-  select(Date, DayOfWeek, DepTime, ArrTime, 
+  select(Date, Year, Month, DayofMonth, DayOfWeek, DepTime, ArrTime, 
          ActualElapsedTime, AirTime, ArrDelay, DepDelay, 
          Origin, Dest, Distance, TaxiIn, TaxiOut, 
          Cancelled, CancellationCode, Diverted, Delayed)
@@ -35,21 +41,21 @@ head(dataset)
 dependent_var <- 'Delayed'
 
 ###
+# Check if the data file is present if not download it.
+###
+if (!file.exists("hflights/data/airports.dat")) {
+  download.file(
+    'https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv',
+    'hflights/data/airports.dat'
+  )
+}
+
+###
 # Load the airport list
 ###
-raw <- read.delim('https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv', 
-                         sep = '^')
-
+raw <- read.delim('hflights/data/airports.dat', sep = '^')
 airport_ds <- select(raw, city_code, city_name, country_code, tz_code, por_code, por_name)
 head(airport_ds)
-
-##
-# replce origin and destination city names
-##
-dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
-dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
-
-head(dataset)
 
 ###
 # Summarized delayed flight data flying from different origins and destination
@@ -71,43 +77,60 @@ dataset %>%
             max_delay = max(DepDelay),
             total = n())
 
-###
-# Cancelled Flights
-# Flights cancelled by Carrier
-###
-dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'A') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
+##
+# replce origin and destination city names
+##
+dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
+dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
 
-###
-# Cancelled Flights
-# Flights cancelled by weather
-###
-dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'B') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
+dataset$Origin <- factor(dataset$Origin)
+dataset$Dest <- factor(dataset$Dest)
 
-###
-# Cancelled Flights
-# Flights cancelled by national air system
-###
-dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'C') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
+dataset$Date <- factor(dataset$Date)
+dataset$Year <- factor(dataset$Year)
+dataset$Month <- factor(dataset$Month)
+dataset$DayofMonth <- factor(dataset$DayofMonth)
+dataset$Delayed <- factor(dataset$Delayed)
+dataset$DayOfWeek <- factor(dataset$DayOfWeek)
 
-###
-# Cancelled Flights
-# Flights cancelled by security
-###
-dataset %>%
-  filter(Cancelled == 1 & CancellationCode == 'D') %>%
-  group_by(Dest) %>%
-  summarise(total = n())
+dataset <- dataset %>%
+  filter(is.na(DepTime) == FALSE &
+           is.na(ArrTime) == FALSE)
+#write.csv(dataset, file = "hflights/data/dataset.csv")
+summary(dataset)
 
 
+unique(dataset$Origin)
+unique(dataset$Dest)
+
+
+df <- 
+  dataset %>%
+  filter(Delayed == 1) %>%
+  group_by(Year, Month) %>%
+  summarise( avg_delay = round(x = mean(DepDelay, na.rm = TRUE), digits = 0),
+             max_delay = max(DepDelay)) %>%
+  arrange(Year, Month) %>%
+  mutate(Year_Month = paste(Month, Year, sep = '/')) %>%
+  ungroup() %>%
+  select(Year_Month, avg_delay, max_delay)
+
+head(df)
+
+###
+# Visualizing data
+###
+
+df %>%
+  plot_ly()%>%
+  add_trace(x = ~Year_Month, y = ~avg_delay, type = 'bar',
+            text = df$avg_delay, textposition = 'auto') %>%
+  add_trace(x = ~Year_Month, y = ~max_delay, type = 'bar',
+            text = df$max_delay, textposition = 'auto') %>%
+  layout(title = "Monthly delayed flights",
+         barmode = 'group',
+         xaxis = list(title = "Month"),
+         yaxis = list(title = "Delay in minutes"))
 
 
 ##------- Predictions  ---------##
@@ -122,16 +145,40 @@ test_set <- dataset[flt_sample == 2, ]
 
 
 ###
+# Create the formula, we will be using it in all of the classification model
+###
+lm_formula <- as.formula(paste('Delayed', ' ~ DepDelay + ActualElapsedTime + ArrDelay + 
+                  ArrTime + AirTime + ArrDelay + Distance + TaxiIn', sep = ''))
+
+
+glm_model <- classificationModel(train_set = training_set, 
+                                 test_set = test_set,
+                                 model_formula = lm_formula, 
+                                 model_name = 'lr')
+
+svm_model <- classificationModel(train_set = training_set, 
+                    test_set = test_set,
+                    model_formula = lm_formula, 
+                    model_name = 'svm')
+
+nb_model <- classificationModel(train_set = training_set, 
+                                 test_set = test_set,
+                                 model_formula = lm_formula, 
+                                 model_name = 'nb')
+dt_model <- classificationModel(train_set = training_set, 
+                                 test_set = test_set,
+                                 model_formula = lm_formula, 
+                                 model_name = 'dt')
+rf_model <- classificationModel(train_set = training_set, 
+                                 test_set = test_set,
+                                 model_formula = lm_formula, 
+                                 model_name = 'rf')
+
+###
 # Let's create a dataframe to compare the predicted values
 # (from different classification models) with actuals
 ###
 Comp_pred <- data.frame('predicted' = test_set[dependent_var])
-
-###
-# Create the formula, we will be using it in all of the classification model
-###
-lm_formula <- as.formula(paste('Delayed', ' ~ ActualElapsedTime + ArrDelay + ArrTime + 
-                   AirTime + ArrDelay + Distance + TaxiIn', sep = ''))
 
 
 ###--------------------###
@@ -161,25 +208,23 @@ Comp_pred$L_R <- ifelse(y_pred > 0.5, 1, 0)
 # Decision Tree          #
 ###--------------------###
 # Fitting Decision Tree model on training set
-library(party)
 classifier <- ctree(formula = lm_formula, data = training_set, controls = ctree_control(mincriterion = 0.9, minsplit = 1000))
 # plot(classifier)
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
-Comp_pred$DecisionTree <- ifelse(y_pred > 0.5, 1, 0)
+Comp_pred$DecisionTree <- y_pred
 
 ###--------------------###
 # Random Forest          #
 ###--------------------###
 # Fitting Random FOrest model on training set
-library(randomForest)
 classifier <- randomForest(formula = lm_formula, data = training_set)
 # plot(classifier)
 
 # Predicting the test set results
 y_pred <- predict(classifier, newdata = test_set)
-Comp_pred$RandomForest <- ifelse(y_pred > 0.5, 1, 0)
+Comp_pred$RandomForest <- y_pred
 
 ###---------------------###
 # K-Nearest Neighbor(KNN) #
@@ -191,7 +236,7 @@ test_set1 <- select(test_set, -Delayed)
 
 ctg_train_lbl <- training_set[, 'Delayed']
 
-library(class)
+suppressWarnings(library(class))
 y_pred <- knn(train = training_set1,  test = test_set1, cl = ctg_train_lbl, k = 1000)
 Comp_pred$KNN <- ifelse(y_pred > 0.5, 1, 0)
 
