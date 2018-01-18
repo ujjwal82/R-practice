@@ -40,26 +40,44 @@ head(dataset)
 
 dependent_var <- 'Delayed'
 
-###
-# Check if the data file is present if not download it.
-###
-if (!file.exists("hflights/data/airports.dat")) {
-  download.file(
-    'https://raw.githubusercontent.com/opentraveldata/opentraveldata/master/data/IATA/archives/iata_airport_list_20171208.csv',
-    'hflights/data/airports.dat'
-  )
-}
+# Find all flights which delayed by more than 15 and mark them as DELAYED 
+dataset$Delayed <- ifelse(is.na(dataset$DepDelay), 0, ifelse(dataset$DepDelay > 15, 1, 0))
 
 ###
-# Load the airport list
+# Add airport city name (Origin and Destination both)
 ###
-raw <- read.delim('hflights/data/airports.dat', sep = '^')
-airport_ds <- select(raw, city_code, city_name, country_code, tz_code, por_code, por_name)
+airport_ds <- read.csv('airportList.csv', header = FALSE)
+colnames(airport_ds) <- c('airport_name', 'code')
 head(airport_ds)
+airport_ds[,'airport_name']
+
 
 ###
-# Summarized delayed flight data flying from different origins and destination
+# Derive the Full date
 ###
+dataset$Date <- paste(dataset$Year, dataset$Month, dataset$DayofMonth, sep = '-')
+
+
+###
+# All filghts flying on 1-Jan and delayed 
+###
+dataset %>%
+  filter(Month == 1 , DayofMonth == 1) %>%
+  filter(Delayed == 1)
+
+
+###
+# Derive the Full date
+###
+dataset$Date <- paste(dataset$Year, dataset$Month, dataset$DayofMonth, sep = '-')
+
+
+###
+# All filghts flying on 1-Jan and delayed 
+###
+dataset %>%
+  filter(Month == 1 , DayofMonth == 1) %>%
+  filter(Delayed == 1)
 
 dataset %>%
   filter(Cancelled == 0) %>%
@@ -80,8 +98,8 @@ dataset %>%
 ##
 # replce origin and destination city names
 ##
-dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
-dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
+# dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
+# dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
 
 dataset$Origin <- factor(dataset$Origin)
 dataset$Dest <- factor(dataset$Dest)
