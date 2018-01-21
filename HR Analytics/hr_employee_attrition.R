@@ -2,12 +2,13 @@
 
 # Load following packages
 pcks = c("tidyquant", "readxl", "h2o", "lime")
-install.packages(pcks)
+#install.packages(pcks)
+install.packages('lime')
 
-library(tidyquant)  # Loads tidyverse and several other pkgs 
-library(lime)       # Explain complex black-box ML models
-library(readxl)     # Super simple excel reader
-library(h2o)        # Professional grade ML pkg
+suppressWarnings(library(tidyquant))  # Loads tidyverse and several other pkgs 
+suppressWarnings(library(lime))       # Explain complex black-box ML models
+suppressWarnings(library(readxl))     # Super simple excel reader
+suppressWarnings(library(h2o))        # Professional grade ML pkg
 
 
 # Read the excel file
@@ -35,6 +36,7 @@ h2o.no_progress() # Turn off output of progress bars
 # Split data into Train/Validation/Test Sets
 hr_data_h2o <- as.h2o(hr_data)
 
+hr_data_h2o <- scale(hr_data_h2o)
 split_h2o <- h2o.splitFrame(hr_data_h2o, c(0.7, 0.15), seed = 1234 )
 
 train_h2o <- h2o.assign(split_h2o[[1]], "train" ) # 70%
@@ -109,3 +111,67 @@ model_type.H2OBinomialModel <- function(x, ...) {
   
   return("classification")
 }
+
+# Setup lime::predict_model() function for h2o
+predict_model.H2OBinomialModel <- function(x, newdata, type, ...) {
+  # Function performs prediction and returns dataframe with Response
+  #
+  # x is h2o model
+  # newdata is data frame
+  # type is only setup for data frame
+  
+  pred <- h2o.predict(x, as.h2o(newdata))
+  
+  # return probs
+  return(as.data.frame(pred[,-1]))
+  
+}
+
+# Test our predict_model() function
+predict_model(x = automl_leader, newdata = as.data.frame(test_h2o[,-1]), type = 'raw') %>%
+  tibble::as_tibble()
+
+# Run lime() on training set
+explainer <- lime::lime(
+  x = as.data.frame(train_h2o[,-1]), 
+  model          = automl_leader, 
+  bin_continuous = FALSE)
+
+# Run explain() on explainer
+explanation <- lime::explain(
+  x =as.data.frame(test_h2o[1:10,-1]), 
+  explainer    = explainer, 
+  n_labels     = 1, 
+  n_features   = 4,
+  kernel_width = 0.5)
+
+plot_features(explanation) +
+  labs(title = "HR Predictive Analytics: LIME Feature Importance Visualization",
+       subtitle = "Hold Out (Test) Set, First 10 Cases Shown")
+
+
+# Focus on critical features of attrition
+attrition_critical_features <- hr_data %>%
+  tibble::as_tibble() %>%
+  select(Attrition, TrainingTimesLastYear, JobRole, OverTime) %>%
+  rowid_to_column(var = "Case")
+attrition_critical_features
+
+
+##  ------------------------------
+# Explaining a model and an explainer for it
+library(MASS)
+iris_test <- iris[1, 1:4]
+iris_train <- iris[-1, 1:4]
+iris_lab <- iris[[5]][-1]
+model <- lda(iris_train, iris_lab)
+explanation <- lime(iris_train, model)
+
+# This can now be used together with the explain method
+explanation <- explain(iris_test, explanation, n_labels = 3, n_features = 3)
+explanation
+
+plot_features(explanation) +
+  labs(title = "HR Predictive Analytics: LIME Feature Importance Visualization",
+       subtitle = "Hold Out (Test) Set, First 10 Cases Shown")
+
