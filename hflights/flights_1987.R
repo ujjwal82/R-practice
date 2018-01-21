@@ -59,6 +59,45 @@ head(airport_ds)
 dataset$Origin <- airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']
 dataset$Dest <- airport_ds[match(dataset$Dest, airport_ds$por_code),'city_name']
 
+for (origin in unique(dataset$Dest)){
+  df1 <- airport_ds %>%
+     filter(origin == por_code)%>%
+     select(city_name)
+  if( length(df1$city_name) == 0){
+    print(paste(origin, df1$city_name,  sep = "  >> " ))
+  }else{
+    
+  }
+  
+}
+
+library(dplyr)
+library(tidyr)
+
+colnames(dataset)[11] <- 'por_code'
+
+dataset %>%
+    left_join(airport_ds %>% 
+              select(city_name, por_code), by = 'por_code')%>%
+  select(-por_code)
+
+dataset <- dataset %>%
+  right_join(airport_ds %>% 
+              select(city_name, por_code), by = 'por_code')
+
+summary(dataset)
+
+
+# install.packages('qdapTools')
+library(qdapTools)
+lookup(airport_ds[,1:2], key.match = dataset$Origin, missing = NA, key.reassign = NULL)
+
+airport_ds
+
+with(airport_ds, dataset[match()])
+
+sum(is.na(airport_ds[match(dataset$Origin, airport_ds$por_code),'city_name']))
+
 dataset$Origin <- factor(dataset$Origin)
 dataset$Dest <- factor(dataset$Dest)
 
@@ -104,13 +143,16 @@ plot_ly(data = df, x = ~Year_Month, y = ~avg_delay,
 df %>%
   plot_ly()%>%
   add_trace(x = ~Year_Month, y = ~avg_delay, type = 'bar',
-            text = df$avg_delay, textposition = 'auto') %>%
+           text = df$avg_delay, textposition = 'auto', 
+           name = 'Avg Delay', width = c(0.25)) %>%
   add_trace(x = ~Year_Month, y = ~max_delay, type = 'bar',
-            text = df$max_delay, textposition = 'auto') %>%
+           text = df$max_delay, textposition = 'auto',
+           name = 'Max Delay', width = c(0.25)) %>%
   layout(title = "Monthly delayed flights",
          barmode = 'group',
          xaxis = list(title = "Month"),
          yaxis = list(title = "Delay in minutes"))
+
 
 
 ###
@@ -125,7 +167,7 @@ df_origin_flights <- dataset %>%
             total = n())
 
 df_dest_flights <- dataset %>%
-  group_by(Dest) %>%
+  group_by(Origin, Dest) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
             max_delay = max(DepDelay),
@@ -135,7 +177,7 @@ df_dest_flights <- dataset %>%
 # Summarized delayed flight data flying on different weekdays/weekends
 ###
 df_weekdays_flights <- dataset %>%
-  group_by(DayOfWeek) %>%
+  group_by(Origin, DayOfWeek) %>%
   summarise(avg_delay = round(x = mean(DepDelay), digits = 0),
             min_deplay = min(DepDelay),
             max_delay = max(DepDelay),

@@ -10,6 +10,8 @@
 ## Below packages used for Random Forest
 # install.packages('randomForest')
 
+getwd()
+setwd("D:\\ujjwal\\Tutorial\\DataScience\\R-practice")
 my_model <- function(split_size, model_name){
   # Support Vector Machine
   
@@ -82,8 +84,12 @@ my_model <- function(split_size, model_name){
   return(model)
 }
 
-my_model(0.9, 'svm')
-my_model(0.9, 'nb')
-my_model(0.9, 'dt')
-my_model(0.9, 'rf')
+model_svm <- my_model(0.9, 'svm')
+model_nb <- my_model(0.9, 'nb')
+model_dt <- my_model(0.9, 'dt')
+model_rf <- my_model(0.9, 'rf')
 
+model_svm
+model_nb
+model_dt
+model_rf
