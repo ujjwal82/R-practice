@@ -1,4 +1,5 @@
 
+
 library(dplyr)
 library(broom)
 library(h2o)        # Professional grade ML pkg
@@ -23,7 +24,8 @@ recipe_obj <- hr_data_organized_tbl %>%
 
 hr_data_bake_tbl <- bake(recipe_obj, newdata = hr_data_organized_tbl) 
 
-h2o.init()
+h2o.init( port = 3030)
+
 
 hr_data_bake_h2o <- as.h2o(hr_data_bake_tbl)
 
