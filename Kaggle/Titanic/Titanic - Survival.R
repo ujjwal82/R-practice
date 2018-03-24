@@ -1,16 +1,18 @@
 # pkgs <- c("e1071", "caret", "doSNOW", "ipred", "xgboost", "mice")
 # install.packages(pkgs)
 
+#install.packages('mice')
 library(caret)
 library(doSNOW)
 
 library(dplyr)
 library(mice)
 
+setwd("D:/ujjwal/Tutorial/DataScience/R-practice/Kaggle/Titanic")
+
 ###
 # Load data
 ###
-
 train <- read.csv('train.csv')
 View(train)
 
@@ -55,7 +57,7 @@ str(train)
 # values of Ages.
 
 # First transform all feature to dummy variables.
-dummy.vars <- dummyVars(~ . , data = train[, -1])
+dummy.vars <- dummyVars(formula = ~ . , data = train[, -1], sep = '_')
 train.dummy <- predict(dummy.vars, train[, -1])
 View(train.dummy)
 
@@ -90,7 +92,7 @@ prop.table(table(titanic.test$Survived))
 
 ###
 # Set up caret to perform 10-forld cross validation repeated 3 timed 
-# and to use a grid search for optima model hyperparamer.
+# and to use a grid search for optimal model hyperparamer.
 ###
 train.control <- trainControl(method = "repeatedcv",
                               number = 10,

@@ -1,3 +1,8 @@
+###
+# URL for reference:
+#   http://www.business-science.io/business/2017/09/18/hr_employee_attrition.html
+###
+
 ## HR Analytics: Using macine learning to predict employee ternover
 
 # Load following packages
