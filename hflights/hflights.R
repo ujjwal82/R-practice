@@ -9,14 +9,17 @@
 # install.packages("rpart")
 # install.packages('plotly')
 # install.packages('httpuv')
+# install.packages('party')
 # install.packages('randomForest')
+# install.packages('yaml')
 suppressWarnings(library(dplyr))
 suppressWarnings(library(hflights))
 suppressWarnings(library(plotly))
 suppressWarnings(library(party))
 suppressWarnings(library(randomForest))
 
-source('hflights/common.R')
+setwd("D:/ujjwal/Tutorial/DataScience/R-practice/hflights")
+source('common.R')
 
 # Importing the dataset and select useful columns only
 
