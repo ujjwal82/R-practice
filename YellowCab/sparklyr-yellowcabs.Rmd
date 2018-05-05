@@ -1,0 +1,51 @@
+
+#  https://s3.amazonaws.com/nyc-tlc/trip+data/yellow_tripdata_2017-01.csv
+
+
+# library(readr)
+# dataset <- read_csv('https://s3.amazonaws.com/nyc-tlc/trip+data/yellow_tripdata_2017-01.csv')
+
+# install.packages('data.table')
+library(data.table)
+
+setwd("D:/ujjwal/Tutorial/DataScience/R-practice/YellowCab")
+
+dataset <- read.csv('yellow_tripdata_2017-01.csv')
+
+
+```{r}
+  install.packages('sparklyr')
+```
+```{r, eval = FALSE}
+  library(sparklyr)
+  library(dplyr)
+```
+
+- Install Spark Verion 2.1.0  locally  in your computer
+```{r}
+  spark_install(version = "2.1.0")
+```
+
+# Create a spark session
+
+We will use a custom configuration for the 'sparkly' connection, we are requesting:
+ - 16 gigabytes of memory for the 'driver'
+ - Make 80% of memory accessible to use during the analysis
+```{r}
+  conf <- spark_config()
+  conf$`sparkly.shell.driver-memory` <- "16G"
+  conf$spark.memory.fraction <- 0.8
+```
+
+- Make sure to pass the 'conf' variable as a value of the 'config' argument
+- Navigate to http://127.0.0.1:4040/executors
+- In the **Executors** section ther is 12GB of Storage memory assigned (16*80%)
+- There are also 8 cores assigned
+
+```{r}
+  sc <- spark_connect(master = "local",  config = conf, version = "2.1.0")
+```
+
+
+
+

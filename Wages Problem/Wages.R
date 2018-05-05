@@ -64,7 +64,28 @@ dataset.train <- dataset[indexes,]
 dataset.test <-  dataset[-indexes,]
 
 
+###
+# Set up caret to perform 10-forld cross validation repeated 3 timed 
+# and to use a grid search for optimal model hyperparamer.
+###
+train.control <- trainControl(method = "repeatedcv",
+                              number = 10,
+                              repeats = 3,
+                              search = "grid")
 
+###
+# Leverage the grid search of hyperparameters for xgboost.
+###
+tune.grid <- expand.grid(eta = c(0.05, 0.075, 0.1),
+                         nrounds = c(50, 75, 100),
+                         max_depth = 6:8,
+                         min_child_weight = c(1.0, 2.25, 2.5),
+                         colsample_bytes = c(0.3, 0.4, 0.5),
+                         gamma = 0,
+                         subsample = 1)
+View(tune.grid)
+
+lm
 
 
 

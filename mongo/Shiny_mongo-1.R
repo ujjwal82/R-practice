@@ -1,3 +1,8 @@
+# install.packages('shiny')
+# install.packages('shinyjs')
+# install.packages('mongolite')
+# install.packages('dplyr')
+
 #install.packages('plotly')
 #install.packages('yaml')
 
@@ -66,7 +71,7 @@ ui <- fluidPage(
       ###
       dateRangeInput(inputId = 'dateRange',
                      label = 'Date range input: yyyy-mm-dd',
-                     start = Sys.Date() - 60, end = Sys.Date()
+                     start = Sys.Date() - 69, end =  Sys.Date() - 68
       ),
       
       ###
@@ -77,8 +82,8 @@ ui <- fluidPage(
     
     mainPanel(
       
-      actionButton("showSidebar", ">>"),
-      actionButton("hideSidebar", "<<"),               
+      actionButton(inputId = "showSidebar", label = ">>"),
+      actionButton(inputId = "hideSidebar", label = "<<"),               
       ###
       # Add output plot control to show the graphs.
       ###
@@ -141,12 +146,15 @@ server <- function(input, output, session) {
     
     print(paste('startID : ', startID))
     print(paste('endID : ', endID))
-    outputResult$Hour <- substr(x = outputResult$A, 1, 10)
+    outputResult$Date <- substr(x = outputResult$A, 1, 8)
+    outputResult$Hour <- substr(x = outputResult$A, 9, 10)
     outputResult$Minute <- substr(x = outputResult$A, 11, 12)
     
     outputResult <- outputResult %>%
-                    group_by(Hour) %>%
-      summarise(cound = n(), DTR = mean(as.numeric(DTR)))
+      select(Date, Hour, Minute, DTR)
+    # outputResult <- outputResult %>%
+    #                 group_by(Hour) %>%
+    #   summarise(cound = n(), DTR = mean(as.numeric(DTR)))
       
     outputResult
     
@@ -158,6 +166,7 @@ server <- function(input, output, session) {
   })
   
   output$plot <- renderPlot({
+    
     energyData <- userSelectedData()
 
     ggplot(energyData, aes(x=Hour,y=DTR)) +

@@ -7,4 +7,8 @@
 
 # install.packages('data.table')
 library(data.table)
-dataset <- read.csv('YellowCab\\yellow_tripdata_2017-01.csv')
+
+setwd("D:/ujjwal/Tutorial/DataScience/R-practice/YellowCab")
+
+dataset <- read.csv('yellow_tripdata_2017-01.csv')
+

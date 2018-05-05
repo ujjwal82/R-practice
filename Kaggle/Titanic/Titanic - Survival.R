@@ -14,7 +14,7 @@ setwd("D:/ujjwal/Tutorial/DataScience/R-practice/Kaggle/Titanic")
 # Load data
 ###
 train <- read.csv('train.csv')
-View(train)
+# View(train)
 
 ###
 # Handle the missing values.
